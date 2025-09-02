@@ -18,7 +18,7 @@ import (
 )
 
 // chunk size in # of chunks
-const chunk_size = 5
+const chunk_size = 8
 
 // chunk margin in # of lines
 const chunk_margin = 3
@@ -50,7 +50,7 @@ func readChunks(f *os.File, onChunk func(ls, le int, s string)) (err error) {
 		if pcount >= chunk_size && len(accumulator) > 0 {
 			pcount = 0
 			out := append(retrieveMarginEnd(prevChunk, chunk_margin), accumulator...)
-			onChunk(min(0, linepos-len(out)), linepos, strings.Join(out, "\n"))
+			onChunk(max(linepos-len(out), 0), linepos, strings.Join(out, "\n"))
 			prevChunk = accumulator
 			accumulator = nil
 		}

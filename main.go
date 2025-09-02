@@ -17,9 +17,73 @@ const embed_model = "nomic-embed-text"
 const embed_dim = 768
 
 func main() {
-	client, err := api.ClientFromEnvironment()
+	err := run_cmp()
 	if err != nil {
 		panic(err)
+	}
+}
+
+const docs = `
+<docs>
+*api.txt*               Nvim
+
+
+                 NVIM REFERENCE MANUAL    by Thiago de Arruda
+
+
+Nvim API                                                           *API* *api*
+
+Nvim exposes a powerful API that can be used by plugins and external processes
+via |RPC|, |Lua| and Vimscript (|eval-api|).
+
+Applications can also embed libnvim to work with the C API directly.
+
+                                      Type |gO| to see the table of contents.
+</docs>
+
+Using the docs `
+
+// const prompt = `Your task is to summarize a list of claims from the text. Your response should be in the format { claims: string[] }.
+//
+// %s`
+
+const prompt = `You are a researcher taking comprehensive notes on existing documentation.
+You will use a multi-step process to understand the entire text.
+
+`
+
+func run_cmp() (err error) {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	err = client.Chat(ctx, &api.ChatRequest{
+		Model: gen_model,
+		Messages: []api.Message{
+			{
+				Role:    "system",
+				Content: fmt.Sprintf(prompt, docs),
+			},
+		},
+	}, func(cr api.ChatResponse) error {
+		fmt.Print(cr.Message.Content)
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func run() (err error) {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -30,17 +94,17 @@ func main() {
 		Address: "127.0.0.1:19530",
 	})
 	if err != nil {
-		panic(err)
+		return
 	}
 	defer vdb.Close(ctx)
 
-	err = IndexFiles(ctx, client, vdb, false)
+	err = IndexFiles(ctx, client, vdb, true)
 	if err != nil {
-		panic(err)
+		return
 	}
 	err = vdb.UseDatabase(ctx, milvusclient.NewUseDatabaseOption("nvim"))
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	fmt.Println("embedding query")
@@ -49,17 +113,17 @@ func main() {
 		Input: "disable spell check neovim",
 	})
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	fmt.Println("loading collection")
 	task, err := vdb.LoadCollection(ctx, milvusclient.NewLoadCollectionOption("docs"))
 	if err != nil {
-		panic(err)
+		return
 	}
 	err = task.Await(ctx)
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	results, err := vdb.Search(ctx, milvusclient.NewSearchOption(
@@ -70,26 +134,27 @@ func main() {
 		},
 	).WithANNSField("content"))
 	if err != nil {
-		panic(err)
+		return
 	}
 	for _, r := range results {
 		ids := make([]int64, r.IDs.Len())
 		for i := range r.IDs.Len() {
 			ids[i], err = r.IDs.GetAsInt64(i)
 			if err != nil {
-				panic(err)
+				return
 			}
 		}
 
 		fmt.Println("IDs:", ids)
 		fmt.Println("Scores:", r.Scores)
 
-		entities, err := vdb.Get(ctx, milvusclient.NewQueryOption("docs").
+		var entities milvusclient.ResultSet
+		entities, err = vdb.Get(ctx, milvusclient.NewQueryOption("docs").
 			WithConsistencyLevel(entity.ClStrong).
 			WithIDs(column.NewColumnInt64("id", ids)).
 			WithOutputFields("filename", "line_start", "line_end"))
 		if err != nil {
-			panic(err)
+			return
 		}
 
 		for i := range entities.Fields.Len() {
@@ -107,10 +172,11 @@ func main() {
 
 	err = vdb.ReleaseCollection(ctx, milvusclient.NewReleaseCollectionOption("docs"))
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	// client.Chat(ctx, &api.ChatRequest{
 	// 	Model: model,
 	// })
+	return
 }
