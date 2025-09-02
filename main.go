@@ -47,8 +47,60 @@ Using the docs `
 //
 // %s`
 
-const prompt = `You are a researcher taking comprehensive notes on existing documentation.
+// Reader
+// Operations:
+// - scroll_down -> scroll to the next text chunk
+// - add -> add claims
+
+// Between a claim and evidence, there is the bonding element that you have to consider.
+// Exactly how reliable can we say a claim derives from evidence?
+// Summarizing an existing established text is likely to be reliable.
+// Summarizing a list of summaries to give an overview of a field is also likely to be reliable.
+// That is:
+//  - The process of summarization is reliable, it is hard to mess up.
+//  - The process of abstracting from data is not necessarily reliable however.
+//
+// Summarization is not really abstraction, it is just rewriting the same text in a different format while omitting certain claims.
+// The ideal claim derivation would result in the *exact same* information as the original text, just in a cleaner format.
+// So summarization and claim derivation should be treated as different processes.
+
+// Claim:
+// - Text: The text that makes up the claim. (the generic concept or abstraction)
+// - Evidence:
+//   - Examples that lend credence to the claim.
+//   - This may be a reference to a text chunk from which the claim was extracted from.
+//   - Or it may be a reference to other claims.
+
+// imagine a human:
+// look through all the headings, see which one it probably belongs to
+// look through sub headings, determine if one needs to be added
+// add it to one?
+// occassionally restructure everything
+
+// Creating concepts (or abstraction):
+// - conceptualizing/grouping claims together is done when there are too many claims to make sense of.
+// - conceptualizing allows one to use one "general" claim to encompass many specific claims.
+// - creating concepts doesn't happen instantaneously, it is also method/process based.
+//   - when you have a large set of possibly unrelated claims, you need to go through it systematically.
+//   - you start with one claim, look at the groups/unassigned claims you have, see if it fits in any:
+//		- if it follows an existing concept, put it in an existing concept
+//      - if with an unassigned claim, make a new group with the two together
+//   	- if not, put it in the unassigned bucket
+//   -
+
+// Organizer
+// Operations:
+//
+// - list_groups(): (id, title, claims)[] -> list groups
+// - list_claims(): (id, text) -> list the claims in a specific group, or that have not been assigned to a group
+//
+// - new_group(title, claims) -> group claims together into a new group
+// - add_to_group(id, claim) -> add a claim to an existing group
+// - remove_from_group(id, claim) -> remove a claim from an existing group
+
+const prompt = `You are a research orchestrator who takes claims from research assistants and
 You will use a multi-step process to understand the entire text.
+You can call the "next_text" tool to
 
 `
 
