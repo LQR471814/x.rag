@@ -1,0 +1,14 @@
+(block
+	(line
+		.
+		[
+			(h1
+				(delimiter)
+				(heading) @header
+			)
+			(h3
+				(heading) @header
+			)
+		]
+	)
+) @block

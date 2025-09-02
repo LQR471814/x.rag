@@ -1,0 +1,3 @@
+[submodule ".treesitter/tree-sitter-vimdoc"]
+	path = .treesitter/tree-sitter-vimdoc
+	url = https://github.com/neovim/tree-sitter-vimdoc.git
