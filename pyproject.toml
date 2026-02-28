@@ -1,0 +1,22 @@
+[project]
+name = "xrag"
+version = "0.1.0"
+description = "A simple rag engine for experiments."
+readme = "README.md"
+authors = [
+    { name = "LQR471814", email = "42160088+LQR471814@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.4.2",
+    "sentence-transformers>=5.2.3",
+    "usearch>=2.23.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"

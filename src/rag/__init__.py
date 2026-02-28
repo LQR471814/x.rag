@@ -1,0 +1,182 @@
+from usearch.index import Index
+from sentence_transformers import CrossEncoder, SentenceTransformer
+import sqlite3
+import numpy as np
+import os
+
+
+class AI:
+    def __init__(self) -> None:
+        self.reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        self.encoder = SentenceTransformer("all-MiniLM-L6-v2")
+
+    # rerank assigns a relevance score of each chunk to the given query
+    def rerank(self, query: str, chunks: list[str]):
+        # Predict scores (Higher score = More relevant)
+        # Cross-encoders take pairs of [query, doc]
+        pairs = [[query, chunk] for chunk in chunks]
+        return self.reranker.predict(pairs)
+
+    # embed creates vector embeddings of the given sentences in batch
+    def embed(self, sentences: list[str]):
+        return self.encoder.encode(sentences)
+
+
+class Store:
+    ai: AI
+    db: sqlite3.Connection
+    index: Index
+
+    def __init__(self, ai: AI, prefix="rag") -> None:
+        self.ai = ai
+        self.db = sqlite3.connect(f"{prefix}-meta.db")
+
+        ndim = self.ai.embed(["This is a test sentence."]).shape[1]
+        self.index = Index(
+            ndim=ndim,  # Define the number of dimensions in input vectors
+            metric="cos",  # Choose 'l2sq', 'ip', 'haversine' or other metric, default = 'cos'
+            dtype="bf16",  # Store as 'f64', 'f32', 'f16', 'i8', 'b1'..., default = None
+            connectivity=16,  # Optional: Limit number of neighbors per graph node
+            expansion_add=128,  # Optional: Control the recall of indexing
+            expansion_search=64,  # Optional: Control the quality of the search
+            multi=False,  # Optional: Allow multiple vectors per key, default = False
+        )
+        self.index_path = f"{prefix}-usearch.db"
+        if os.path.isfile(self.index_path):
+            self.index.load(self.index_path)
+
+    # close closes the RAGStore and all the databases/connections it has open
+    def close(self):
+        self.db.commit()
+        self.db.close()
+        self.index.save(self.index_path)
+
+    # add creates a new memory
+    def add(self, memories: list[str]) -> list[int]:
+        placeholders = ", ".join(["(?)"] * len(memories))
+        cursor = self.db.cursor()
+        cursor.execute(
+            f"insert into memory (content) values {placeholders} returning id",
+            tuple(memories),
+        )
+        new_ids_ints: list[int] = [row[0] for row in cursor.fetchall()]
+        new_ids = np.array(new_ids_ints)
+        self.db.commit()
+
+        print("new memories:", new_ids)
+        embeddings = self.ai.embed(memories)
+        self.index.add(new_ids, embeddings)
+        return new_ids_ints
+
+    # relate creates a relationship between memories
+    def relate(self, child_memory: int, parent_memory: int, type: str):
+        self.db.execute(
+            "insert into relationship (child_memory_id, parent_memory_id, relationship_type) values (?, ?, ?)",
+            (child_memory, parent_memory, type),
+        )
+        self.db.commit()
+
+    # info returns parent and children memories for a given memory
+    def info(self, memory: int):
+        # get content
+        cursor = self.db.cursor()
+        cursor.execute("select content from memory where memory.id = ?", (memory,))
+        memory_content = cursor.fetchone()[0]
+        cursor.close()
+
+        # get parents
+        cursor = self.db.cursor()
+        cursor.execute(
+            """
+select
+    r.parent_memory_id,
+    r.relationship_type,
+    m.content
+from relationship r
+inner join memory m
+   on r.child_memory_id = m.id
+where m.id = ?
+""",
+            (memory,),
+        )
+        parent_memory_ids: list[int] = []
+        parent_relationship_types: list[str] = []
+        parent_content: list[str] = []
+        for id, rel, memory_content in cursor.fetchall():
+            parent_memory_ids.append(id)
+            parent_relationship_types.append(rel)
+            parent_content.append(memory_content)
+        cursor.close()
+        parents = {
+            "ids": parent_memory_ids,
+            "relationships": parent_relationship_types,
+            "content": parent_content,
+        }
+
+        # get children
+        cursor = self.db.cursor()
+        cursor.execute(
+            """
+select
+    r.child_memory_id,
+    r.relationship_type,
+    m.content
+from relationship r
+inner join memory m
+   on r.parent_memory_id = m.id
+where m.id = ?
+""",
+            (memory,),
+        )
+        child_memory_ids: list[int] = []
+        child_relationship_types: list[str] = []
+        child_content: list[str] = []
+        for id, rel, memory_content in cursor.fetchall():
+            child_memory_ids.append(id)
+            child_relationship_types.append(rel)
+            child_content.append(memory_content)
+        cursor.close()
+
+        children = {
+            "ids": child_memory_ids,
+            "relationships": child_relationship_types,
+            "content": child_content,
+        }
+
+        return {
+            "memory_content": memory_content,
+            "parents": parents,
+            "children": children,
+        }
+
+    # rag executes a search for memories
+    def rag(self, query: str) -> dict:
+        print("query:", query)
+
+        query_embed = self.ai.embed([query])[0]
+        matches = self.index.search(query_embed, 256)
+        match_ids = [int(match.key) for match in matches]
+
+        placeholders = ", ".join(["?"] * len(matches))
+        cursor = self.db.cursor()
+        cursor.execute(
+            f"select id, content from memory where id in ({placeholders})",
+            tuple(match_ids),
+        )
+
+        ids: list[int] = []
+        contents: list[str] = []
+        for id, content in cursor.fetchall():
+            ids.append(id)
+            contents.append(content)
+        cursor.close()
+
+        scores: list[float] = [
+            float(score) for score in self.ai.rerank(query, contents)
+        ]
+
+        return {
+            "ids": ids,
+            "contents": contents,
+            "scores": scores,
+        }
