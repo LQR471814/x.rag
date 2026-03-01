@@ -88,6 +88,7 @@ class Store:
             tuple(memories),
         )
         new_ids_ints: list[int] = [row[0] for row in cursor.fetchall()]
+        cursor.close()
         new_ids = np.array(new_ids_ints)
 
         print("new memories:", new_ids)
