@@ -124,11 +124,13 @@ class Store:
 select
     r.parent_memory_id,
     r.relationship_type,
-    m.content
+    parent.content
 from relationship r
-inner join memory m
-   on r.child_memory_id = m.id
-where m.id = ?
+inner join memory parent
+    on parent.id = r.parent_memory_id
+inner join memory child
+   on r.child_memory_id = child.id
+where child.id = ?
 """,
             (memory,),
         )
@@ -153,11 +155,13 @@ where m.id = ?
 select
     r.child_memory_id,
     r.relationship_type,
-    m.content
+    child.content
 from relationship r
-inner join memory m
-   on r.parent_memory_id = m.id
-where m.id = ?
+inner join memory child
+    on child.id = r.child_memory_id
+inner join memory parent
+   on r.parent_memory_id = parent.id
+where parent.id = ?
 """,
             (memory,),
         )
