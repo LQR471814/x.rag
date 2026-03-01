@@ -9,10 +9,14 @@ authors = [
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "numpy>=2.4.2",
+    "sanic>=25.12.0",
     "sentence-transformers>=5.2.3",
     "ucall>=0.5.4",
     "usearch>=2.23.0",
 ]
+
+[project.scripts]
+xrag-server = "xrag_server:main"
 
 [build-system]
 requires = ["uv_build>=0.9.24,<0.10.0"]
