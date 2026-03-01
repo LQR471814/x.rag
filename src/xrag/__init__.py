@@ -4,7 +4,6 @@ import numpy as np
 import os
 from functools import lru_cache
 from sentence_transformers import CrossEncoder, SentenceTransformer
-from ucall.rich_posix import Server
 
 
 class AI:
@@ -212,29 +211,3 @@ where m.id = ?
             "contents": contents,
             "scores": scores,
         }
-
-
-def ucall_server(store: Store):
-    server = Server(port=6567)
-
-    @server
-    def rag_query(query: str) -> dict:
-        return store.rag(query)
-
-    @server
-    def rag_info(memory: int) -> dict:
-        return store.info(memory)
-
-    @server
-    def rag_add(memory: str) -> list[int]:
-        return store.add([memory])
-
-    @server
-    def rag_relate(child: int, parent: int, type: str) -> None:
-        return store.relate(child, parent, type)
-
-    try:
-        server.run()
-    except KeyboardInterrupt:
-        print("Closing...")
-        store.close()
