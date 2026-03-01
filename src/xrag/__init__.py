@@ -1,8 +1,9 @@
 from usearch.index import Index
-from sentence_transformers import CrossEncoder, SentenceTransformer
 import sqlite3
 import numpy as np
 import os
+from functools import lru_cache
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 
 class AI:
@@ -44,6 +45,12 @@ create table relationship (
 ]
 
 
+@lru_cache(maxsize=32)
+def sql_placeholders(args: int, n: int) -> str:
+    questions = ("?, " * args)[:-2]
+    return (f"({questions}), " * n)[:-2]
+
+
 class Store:
     ai: AI
     db: sqlite3.Connection
@@ -81,7 +88,7 @@ class Store:
 
     # add creates a new memory
     def add(self, memories: list[str]) -> list[int]:
-        placeholders = ", ".join(["(?)"] * len(memories))
+        placeholders = sql_placeholders(1, len(memories))
         cursor = self.db.cursor()
         cursor.execute(
             f"insert into memory (content) values {placeholders} returning id",
@@ -181,10 +188,10 @@ where m.id = ?
         matches = self.index.search(query_embed, 256)
         match_ids = [int(match.key) for match in matches]
 
-        placeholders = ", ".join(["?"] * len(matches))
+        placeholders = sql_placeholders(len(matches), 1)
         cursor = self.db.cursor()
         cursor.execute(
-            f"select id, content from memory where id in ({placeholders})",
+            f"select id, content from memory where id in {placeholders}",
             tuple(match_ids),
         )
 
