@@ -91,7 +91,6 @@ class Store:
         cursor.close()
         new_ids = np.array(new_ids_ints)
 
-        print("new memories:", new_ids)
         embeddings = self.ai.embed(memories)
         self.index.add(new_ids, embeddings)
         return new_ids_ints
@@ -178,8 +177,6 @@ where m.id = ?
 
     # rag executes a search for memories
     def rag(self, query: str) -> dict:
-        print("query:", query)
-
         query_embed = self.ai.embed([query])[0]
         matches = self.index.search(query_embed, 256)
         match_ids = [int(match.key) for match in matches]
