@@ -128,9 +128,7 @@ select
 from relationship r
 inner join memory parent
     on parent.id = r.parent_memory_id
-inner join memory child
-   on r.child_memory_id = child.id
-where child.id = ?
+where r.child_memory_id = ?
 """,
             (memory,),
         )
@@ -159,9 +157,7 @@ select
 from relationship r
 inner join memory child
     on child.id = r.child_memory_id
-inner join memory parent
-   on r.parent_memory_id = parent.id
-where parent.id = ?
+where r.parent_memory_id = ?
 """,
             (memory,),
         )
