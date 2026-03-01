@@ -89,7 +89,6 @@ class Store:
         )
         new_ids_ints: list[int] = [row[0] for row in cursor.fetchall()]
         new_ids = np.array(new_ids_ints)
-        self.db.commit()
 
         print("new memories:", new_ids)
         embeddings = self.ai.embed(memories)
@@ -102,7 +101,6 @@ class Store:
             "insert into relationship (child_memory_id, parent_memory_id, relationship_type) values (?, ?, ?)",
             (child_memory, parent_memory, type),
         )
-        self.db.commit()
 
     # info returns parent and children memories for a given memory
     def info(self, memory: int):
