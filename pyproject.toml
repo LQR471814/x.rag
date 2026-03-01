@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-xrag-server = "xrag_server:main"
+xrag-server = "xrag.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.9.24,<0.10.0"]
