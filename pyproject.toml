@@ -6,10 +6,11 @@ readme = "README.md"
 authors = [
     { name = "LQR471814", email = "42160088+LQR471814@users.noreply.github.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "numpy>=2.4.2",
     "sentence-transformers>=5.2.3",
+    "ucall>=0.5.4",
     "usearch>=2.23.0",
 ]
 
