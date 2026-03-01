@@ -22,6 +22,25 @@ class AI:
         return self.encoder.encode(sentences)
 
 
+SCHEMA = """
+create table memory (
+	id integer primary key autoincrement,
+	content text not null
+);
+
+create table relationship (
+	child_memory_id integer not null references memory(id)
+		on update cascade
+		on delete cascade,
+	parent_memory_id integer not null references memory(id)
+		on update cascade
+		on delete cascade,
+	relationship_type text not null,
+	primary key (child_memory_id, parent_memory_id)
+);
+"""
+
+
 class Store:
     ai: AI
     db: sqlite3.Connection
@@ -29,7 +48,12 @@ class Store:
 
     def __init__(self, ai: AI, prefix="rag") -> None:
         self.ai = ai
-        self.db = sqlite3.connect(f"{prefix}-meta.db")
+
+        db_path = f"{prefix}-meta.db"
+        init_sqlite = not os.path.exists(db_path)
+        self.db = sqlite3.connect(db_path)
+        if init_sqlite:
+            self.db.execute(SCHEMA)
 
         ndim = self.ai.embed(["This is a test sentence."]).shape[1]
         self.index = Index(
